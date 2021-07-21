@@ -4,7 +4,7 @@ description: Expose needed services (scenario SAP_COM_0013) of S/4HANA Cloud sys
 auto_validation: true
 primary_tag: topic>abap-development
 tags: [  tutorial>beginner, topic>abap-development, topic>abap-extensibility ]
-time: 25
+time: 30
 author_name: Ulrike Liebherr
 author_profile: https://github.com/Liebherr
 ---
