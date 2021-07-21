@@ -18,7 +18,7 @@ tags: [ tutorial>intermediate, topic>abap-development  ]
 
 
 ### Time to Complete
-**25 Min**.
+**30 Min**.
 
 ---
 
