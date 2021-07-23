@@ -4,7 +4,7 @@ description: Create an inbound communication system and user for SAP Web IDE to 
 auto_validation: true
 primary_tag: topic>abap-development
 tags: [  tutorial>beginner, topic>abap-development, topic>abap-extensibility ]
-time: 15
+time: 17
 author_name: Ulrike Liebherr
 author_profile: https://github.com/Liebherr
 ---
