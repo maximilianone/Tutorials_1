@@ -43,7 +43,7 @@ DATA: mv_subscription_topic TYPE string,
 ```
 You will need them later.
 
-<!--DONE-->
+[DONE]
 
 #### Create an ABAP Messaging Channel
 Create a new ABAP Messaging Channel (AMC). To do so, click on **File** > **New** > **Other...** or press **`Ctrl+N`**.
