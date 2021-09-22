@@ -22,7 +22,7 @@ parser: parser
 
 
 ### Time to Complete
-**25 Min**.
+**20 Min**.
 
 ---
 
