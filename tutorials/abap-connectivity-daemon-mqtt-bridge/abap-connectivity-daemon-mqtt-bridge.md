@@ -1,414 +1,117 @@
 ---
-title: Forward MQTT and AMC Messages Using an ABAP Daemon
-description: Forward MQTT and AMC Messages using an ABAP Daemon.
+title: Migrate SAP ASE Database from On-Premise to SAP HANA Cloud
+description: Migrate your SAP ASE database from on-premise to SAP HANA Cloud.
 auto_validation: true
-primary_tag: topic>abap-development
-tags: [ tutorial>intermediate, topic>abap-development  ]
-parser: parser
----
-# Forward MQTT and AMC Messages Using an ABAP Daessmon
-
-<!--description--> Forward MQTT and AMC Messages using an ABasdAP Daemon.
-
-### Prerequisites
-  - The AaBAP MQTT Client is available on **ABAP Platform 1809** and above.
-  - You need to use **ABAP Development Tools**.
-
-## Details
-### You will learn
-- How to use ABAP Messaging Channels (AMC)
-- How to combine MQTASDT, AMC and ABAP Daemons
-
-
-
-### Time to Complete
-**20 Min**.
-
+time: 10
+tags: [ tutorial>beginner, products>sap-hana-cloud, products>sap-adaptive-server-enterprise, software-product-function>sap-hana-cloud\,-sap-adaptive-server-enterprise]
+primary_tag: products>sap-hana-cloud
+parser: v2
 ---
 
-In this tutoriasdal, you will creaasde an ABAP Daeasdmon that should act as a bi-directional protocol converter between MQTT and AMC. The daemon should receive MQTT messages, convert them to PCP messages, and forward them via an ABAP Messaging Channel (AMC) to other applications. Forwarding also works in the reverse direction.
+# Title
 
-#### Create an ABAP Daemon class
-Create a new ABAP class **`ZCL_TUTORIAL_MQTT_DAEMON`** extending the base class `CL_ABAP_DAEMON_EXT_BASE`.
+<!-- description -->Description
 
-As you can see, there is an error in line 1 since the necessary abstract methods have not been implemented yet. Click on the light bulb next to the line number and select **Add 9 unimplemented methods** to resolve this:
+## Prerequisites
+- You have completed the [previous tutorial](hana-cloud-ase-migration-2) on how to encrypt your SAP ASE database to migrate from on-premise to SAP HANA Cloud.
 
-<!--border--> ![Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
+## You will learn
+- How to create an SAP HANA Cloud, SAP ASE database instance
+- How to copy the encrypted backup to MS Azure using **`azcopy`**
+- How to load the encrypted backup
 
-Add the following variables to the `PRIVATE SECTION` of your class definition:
-```abap
-DATA: mv_subscription_topic TYPE string,
-      mv_publish_topic      TYPE string,
-      mo_client             TYPE REF TO if_mqtt_client.
+## Intro
+
+Migrating an SAP ASE database from on-premise to the cloud requires a bit of preparation and a few important steps. You can look at each of them in more detail, but these are the high-level steps required:
+
+1.	Pre-requisites for migration
+2.	Pre-Migration - Encrypt the on-premise SAP ASE database
+3.	Migration - Create the SAP HANA Cloud, SAP ASE database
+4.	Migration - Copy the Encrypted Backup to MS Azure
+5.	Migration - Load the Encrypted Backup
+
+This tutorial will cover the steps (3 to 5) involving the migration. You can learn about the [first](hana-cloud-ase-migration-1) and the [second](hana-cloud-ase-migration-2) step by referring to the previous tutorials.
+
+### Create the SAP HANA Cloud, SAP ASE database instance
+
+<!-- border -->[My image](mypicture.png)
+
+Now it's time to make sure your SAP ASE database in SAP HANA Cloud is ready to receive the data from your on-premise SAP ASE database. To ensure this, follow these steps:
+
+1.	Provision an SAP HANA Cloud, SAP ASE database instance. The database in SAP HANA Cloud should be at least the same size as the on-premise one, but you might find that you need to increase the size as you go through the migration and performance test. Find more information on our technical documentation.
+
+2.	Configure your SAP ASE database in SAP HANA Cloud. You can find details of the various operational steps to back up the database, SAP ASE configuration or list out the login accounts, roles, and database cache bindings on the SAP HANA Cloud, SAP ASE Migration Guide.
+
+3.	Make sure the SAP HANA Cloud, SAP ASE master database is encrypted with a password and not using an external HSM.
+
+    ```Shell/Bash
+    sp_encryption helpkey, sybencrmasterkey
+    ```
+    If it was not encrypted with a password, then add a password for the master key.
+
+    ```Shell/Bash
+alter encryption key master with external key
+modify encryption with passwd "<PASSWORD>"
 ```
-You will need them later.
+4.	Extract the database-encryption-key from the on-premise SAP ASE database.  There is a `dek_mig_gen.py` key migration script to automatically build the create encrypt key command.  Here is the syntax to use with this script in order to get the database-encryption-key:
 
-[DONE]
+    ```Shell/Bash
+export SYBROOT=/sap/ASE16sp04GA/sap/python_client/testcode/dek_mig_gen.py -U sa -P <PASSWORD> -S <OnPremiseASE> -K <KEY_NAME> -M <PASSWORD>
+```
+    Optionally, you can manually build the database-encryption-key from the on-premise SAP ASE database using `ddlgen`. Instructions for building out the database-encryption-key using `ddlgen` can be found in the SAP HANA Cloud, SAP ASE Migration Guide.
 
-#### Create an ABAP Messaging Channel
-Create a new ABAP Messaging Channel (AMC). To do so, click on **File** > **New** > **Other...** or press **`Ctrl+N`**.
-
-In the popup window, select **ABAP** > **Connectivity** > **ABAP Messaging Channel Application** or simply search for it.
-
-![Creating a new AMC Application](create-abap-messaging-channel.png)
-
-Proceed with the wizard and create an ABAP Messaging Channel Application named **`Z_AMC_TUTORIAL_CHANNEL`**.
-
-> You can enter `$TMP` as the local package for this example.
-
-Now, set up your channel. Choose **Create** and enter **`/mqtt_forward`** as the name of the channel.
-
-![Creating a new ABAP Messaging Channel](create-abap-messaging-channel-2.png)
-
-> Note that an AMC name always has to start with a forward slash "/".
-
-Specify further details regarding the channel. Select **`Client`** as the *Activity Scope* and **`Push Channel Protocol`** as *Message Type*. Additionally, add your daemon class `ZCL_TUTORIAL_MQTT_DAEMON` to the *Authorized Programs* section twice with the Activity S and R to allow your daemon to send and receive messages on this channel:
-
-![Adjusting an ABAP Messaging Channel](create-abap-messaging-channel-3.png)
-
-Finally, **activate your AMC Application** by pressing **`Ctrl+F3`**.
-
-<!--DONE-->
-
-#### Implement ABAP Daemon events
-
->The implementation of the events `ON_ACCEPT`, `ON_START` and `ON_STOP` is based on the tutorial [**Create a Simple ABAP Daemon**](abap-connectivity-daemon-simple). If you need further information regarding these events, check out the tutorial or take a look at the [official documentation](https://help.sap.com/viewer/753088fc00704d0a80e7fbd6803c8adb/1709.001/en-US/311af9b769d84fffa7b7384bae27109c.html).
-
-Replace the empty `ON_ACCEPT` method of your daemon class with the following code. This checks the call stack for whether the program is authorized to start the daemon.
-```ABAP
-METHOD if_abap_daemon_extension~on_accept.
-  TRY.
-      DATA lv_program_name TYPE program.
-      lv_program_name = cl_oo_classname_service=>get_classpool_name( 'ZCL_TUTORIAL_MQTT_DAEMON' ).
-
-      IF i_context_base->get_start_caller_info( )-program = lv_program_name.
-        e_setup_mode = co_setup_mode-accept.
-      ELSE.
-        e_setup_mode = co_setup_mode-reject.
-      ENDIF.
-    CATCH cx_abap_daemon_error.
-      " to do: error handling, e.g. write error log!
-      e_setup_mode = co_setup_mode-reject.
-  ENDTRY.
-ENDMETHOD.
+    ```Shell/Bash
+ddlgen -Usa -P<PASSWORD> -SASE16sp04GA -Dmaster -TEK -XOD -N %
 ```
 
-Now, implement the `ON_START` method. It receives two startup parameters containing the names of the MQTT topics for subscription and publication and stores them in the member variables created in step 1.
+5.	Create the **encrypted** database in the SAP HANA Cloud, SAP ASE. Execute the command previously created as part of the previous step (step 3) to create the database encryption key in the SAP HANA Cloud, SAP ASE.
 
-```ABAP
-METHOD if_abap_daemon_extension~on_start.
-  TRY.
-      " retrieve PCP parameters from start parameters
-      DATA(i_message)       = i_context->get_start_parameter( ).
-      mv_subscription_topic = i_message->get_field( 'sub_topic' ).
-      mv_publish_topic      = i_message->get_field( 'pub_topic' ).
+6.	Create the database using the migrated DEK.
 
-      " specify which MQTT broker to connect to
-      cl_mqtt_client_manager=>create_by_url(
-          EXPORTING
-            i_url            = 'ws://broker.hivemq.com:8000/mqtt'
-            i_event_handler  = me
-          RECEIVING
-            r_client        =  mo_client ).
+    > ### CAUTION
+    >
+    > It is very important to create the database **with the encrypted key**. If you don't, the database will still be created but you won't be able to load the database later.
 
-      " establish the connection
-      mo_client->connect( ).
+    ```Shell/Bash
+    create database <DATABASE_NAME> on datadev11="1G" log on logdev11="50M" for load encrypt with <KEY_NAME>
+    ```
 
-      " subscribe to MQTT topic with a certain quality of service
-      DATA(lt_mqtt_topic_filter_qos) =
-            VALUE if_mqtt_types=>tt_mqtt_topic_filter_qos(
-                         ( topic_filter = mv_subscription_topic
-                           qos          = if_mqtt_types=>qos-at_least_once ) ).
 
-      mo_client->subscribe( i_topic_filter_qos = lt_mqtt_topic_filter_qos ).
+### Step 2 - Copy the encrypted backup to MS Azure using azcopy
 
-      " subscribe to the AMC channel for receiving messages
-      cl_amc_channel_manager=>create_message_consumer(
-          i_application_id = 'Z_AMC_TUTORIAL_CHANNEL'
-          i_channel_id     = '/mqtt_forward'
-          )->start_message_delivery( i_receiver = me ).
+You can see a migration demo video here, and then check out the detailed steps:
 
-    CATCH  cx_abap_daemon_error cx_ac_message_type_pcp_error cx_mqtt_error cx_amc_error.
-      " to do: error handling, e.g. write error log!
-  ENDTRY.
-ENDMETHOD.
+<iframe width="560" height="315" src="https://urldefense.com/v3/__https://www.youtube.com/embed/zNAfk9Wt0Qo__;!!GF_29dbcQIUBPA!lv2WWH1SnniEy-6iRkEYgH4p1xWzLVRHZNEAaJHWGhRvASDV51lH3hBc648fq8crMnioQw$ [youtube[.]com]" frameborder="0" allowfullscreen></iframe>
+
+&nbsp;
+
+1.	If you don't already have an Azure account, you can go to [this website](https://azure.microsoft.com/en-us/free/) and create one.  Once you have logged into the Azure portal, proceed to create an Azure Storage Account of type `blogstorage`.
+
+2.	Install the `azcopy` tool using the help of [this link](https://urldefense.com/v3/__https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=dnf__;!!GF_29dbcQIUBPA!lv2WWH1SnniEy-6iRkEYgH4p1xWzLVRHZNEAaJHWGhRvASDV51lH3hBc648fq8dXIXBgWw$ [docs[.]microsoft[.]com]).
+
+    Then run this command:
+    ```Shell/Bash
+rpm --import https://urldefense.com/v3/__https://packages.microsoft.com/keys/microsoft.asc__;!!GF_29dbcQIUBPA!lv2WWH1SnniEy-6iRkEYgH4p1xWzLVRHZNEAaJHWGhRvASDV51lH3hBc648fq8dluBbZyQ$ [packages[.]microsoft[.]com]
 ```
 
-Then a connection to the MQTT broker is established and the daemon subscribes to the topic. Additionally, the daemon also subscribes to the ABAP Messaging Channel created in step 2.
+3.	Once you have `azcopy` loaded on your system, you will need to log in into your azure account with `azcopy`. Below is the command that you use to do this:
 
+    ```Shell/Bash
+/docker/toolkit/microsoft/azcopy_linux_amd64_10.9.0/azcopy login --tenant-id "XXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+```
+    Replace the `tenant-id` above with the `tenant-id` of your MS Azure account.  After you have executed the `azcopy login` command above, you will be asked to open a browser and type in a code that was provided to allow the access.
 
-> The `ON_START` method will contain two errors since your daemon has not implemented the MQTT and AMC Message handler yet. This will be fixed in steps 5 and 6.
+4.	Next, create a container using the `azcopy` tool.
 
-Now, implement the `ON_STOP` method by inserting the lines below. This method is called when the ABAP Daemon is terminated. The following code simply unsubscribes from the MQTT topic.
+    ```Shell/Bash
+/docker/toolkit/microsoft/azcopy_linux_amd64_10.9.0/azcopy make "https://urldefense.com/v3/__https://salsestorage01.blob.core.windows.net/__;!!GF_29dbcQIUBPA!lv2WWH1SnniEy-6iRkEYgH4p1xWzLVRHZNEAaJHWGhRvASDV51lH3hBc648fq8c9Rpd6Wg$ [salsestorage01[.]blob[.]core[.]windows[.]net]<DATABASE_NAME>container"
+```
+5.	Using the MS Azure portal, generate a shared access signature (SAS) and assign to signing key 1 (access key).
 
-```ABAP
-METHOD if_abap_daemon_extension~on_stop.
-  TRY.
-      " unsubscribe from the MQTT topic
-      DATA(lt_mqtt_topic_filter) = VALUE if_mqtt_types=>tt_mqtt_topic_filter( ( topic_filter =  mv_subscription_topic ) ).
-      mo_client->unsubscribe( i_topic_filter = lt_mqtt_topic_filter ).
-    CATCH cx_mqtt_error cx_ac_message_type_pcp_error cx_abap_daemon_error.
-      " to do: error handling, e.g. write error log!
-  ENDTRY.
-ENDMETHOD.
+6.	Finally, upload the on-premise encrypted backup to the azure storage account using `azcopy`. Be sure to select the database directory name as the root of the directory tree that you want uploaded.
+
+    ```Shell/Bash
+/docker/toolkit/microsoft/azcopy_linux_amd64_10.9.0/azcopy copy '<DATABASE_NAME>_dumpdir/<DATABASE_NAME>' 'https://urldefense.com/v3/__https://salsestorage01.blob.core.windows.net/__;!!GF_29dbcQIUBPA!lv2WWH1SnniEy-6iRkEYgH4p1xWzLVRHZNEAaJHWGhRvASDV51lH3hBc648fq8c9Rpd6Wg$ [salsestorage01[.]blob[.]core[.]windows[.]net]<DATABASE_NAME>container?sp=racwdl&st=2021-02-28T14:19:34Z&se=2022-03-01T22:19:34Z&spr=https&sv=2020-02-10&sr=c&sig=yKCnItSYnfkIb%2BqFzTu7iiP3Saso2zPqY%2F1QtgiEpH8%3D' --recursive
 ```
 
-<!--DONE-->
-
-#### Implement static methods
-In this step, you will create two static methods `START` and `STOP`. They are used to instantiate and terminate your ABAP Daemon and will be called by another ABAP Program.
-
-At first, define the methods by inserting the following code into the `PUBLIC SECTION` in the class definition of your ABAP Daemon class:
-
-```ABAP
-CLASS-METHODS start
-  IMPORTING
-    iv_daemon_name        TYPE string
-    iv_subscription_topic TYPE string
-    iv_publish_topic      TYPE string
-  RAISING
-    cx_abap_daemon_error
-    cx_ac_message_type_pcp_error.
-
-CLASS-METHODS stop
-  IMPORTING
-    iv_daemon_name TYPE string
-  RAISING
-    cx_abap_daemon_error.
-```
-
-Now, copy the static `START` method below into your class implementation. This instantiates the daemon and passes all necessary parameters via PCP.
-
-```ABAP
-METHOD start.
-  " set ABAP Daemon start parameters
-  DATA(lo_pcp) = cl_ac_message_type_pcp=>create( ).
-  lo_pcp->set_field( i_name = 'name' i_value = iv_daemon_name ).
-  lo_pcp->set_field( i_name = 'sub_topic' i_value = iv_subscription_topic ).
-  lo_pcp->set_field( i_name = 'pub_topic' i_value = iv_publish_topic ).
-
-  " start the daemon application using the ABAP Daemon Manager
-  cl_abap_daemon_client_manager=>start(
-      i_class_name = 'ZCL_TUTORIAL_MQTT_DAEMON'
-      i_name       = CONV #( iv_daemon_name )
-      i_priority   = cl_abap_daemon_client_manager=>co_session_priority_low
-      i_parameter  = lo_pcp ).
-ENDMETHOD.
-```
-
-The `STOP` method below can be used to terminate the daemon. It uses the *ABAP Daemon Client Manager* to retrieve a list of all running ABAP Daemon instances of your class and stops them.
-
-Add these lines to the class implementation:
-
-```ABAP
-METHOD stop.
-  " retrieve the list of ABAP Daemon instances
-  DATA(lt_ad_info) = cl_abap_daemon_client_manager=>get_daemon_info( i_class_name = 'ZCL_TUTORIAL_MQTT_DAEMON').
-
-  " for each running daemon instance of this class
-  LOOP AT lt_ad_info ASSIGNING FIELD-SYMBOL(<ls_info>).
-
-    " stop the daemon if the names match
-    IF iv_daemon_name = <ls_info>-name.
-      cl_abap_daemon_client_manager=>stop( i_instance_id = <ls_info>-instance_id ).
-    ENDIF.
-
-  ENDLOOP.
-ENDMETHOD.
-```
-
-<!--DONE-->
-
-#### Handle incoming MQTT messages
-
-Your ABAP Daemon will process each incoming MQTT message by simply forwarding it to the ABAP Messaging Channel.
-
-In order to receive MQTT messages, your daemon needs to implement the interface `IF_MQTT_EVENT_HANDLER`. Therefore, insert the line below into the `PUBLIC SECTION` of your ABAP class definition:
-
-```ABAP
-INTERFACES if_mqtt_event_handler.
-```
-
-To easily implement the necessary methods for this interface, **place the cursor in the line you just inserted, press ``Ctrl+1``** and select **Add 6 unimplemented methods**:
-
-![Add unimplemented methods for the interface](add-unimplemented-methods-mqtt.png)
-
-Now, add the following code to the interface method `ON_MESSAGE`, which is called each time an MQTT message is received:
-
-```ABAP
-METHOD if_mqtt_event_handler~on_message.
-  TRY.
-      " retrieve message text and put received message into PCP format
-      DATA(lv_message) = i_message->get_text( ).
-      DATA(lo_pcp)     = cl_ac_message_type_pcp=>create( ).
-      lo_pcp->set_text( lv_message ).
-
-      " forward message via AMC
-      CAST if_amc_message_producer_pcp(
-             cl_amc_channel_manager=>create_message_producer(
-               i_application_id = 'Z_AMC_TUTORIAL_CHANNEL'
-               i_channel_id     =  '/mqtt_forward'
-               i_suppress_echo  = abap_true )
-        )->send( i_message = lo_pcp ).
-    CATCH cx_mqtt_error cx_ac_message_type_pcp_error cx_amc_error.
-      " to do: error handling, e.g. write error log!
-  ENDTRY.
-ENDMETHOD.
-```
-
-<!--DONE-->
-
-#### Handle AMC messages
-As your ABAP Daemon shall also receive AMC messages, you will need to add another interface to your class definition:
-```ABAP
-INTERFACES if_amc_message_receiver_pcp.
-```
-
-There should be a warning since the interface method `RECEIVE` has not been implemented yet. In this method, you retrieve the PCP message content from the importing variable `I_MESSAGE`. Insert the code below into the class implementation of your ABAP Daemon:
-
-```ABAP
-METHOD if_amc_message_receiver_pcp~receive.
-  TRY.
-      " get message sent to the daemon via AMC
-      DATA(lv_message) = i_message->get_text( ).
-
-      " forward the message on the specified MQTT channel
-      DATA(lo_mqtt_message) = cl_mqtt_message=>create( ).
-      lo_mqtt_message->set_qos( if_mqtt_types=>qos-at_least_once ).
-      lo_mqtt_message->set_text( lv_message ).
-
-      mo_client->publish( i_topic_name = mv_publish_topic
-                          i_message    = lo_mqtt_message ).
-
-    CATCH cx_ac_message_type_pcp_error cx_mqtt_error.
-      " to do: error handling, e.g. write error log!
-  ENDTRY.
-ENDMETHOD.
-```
-
-<!--DONE-->
-
-#### Run the ABAP Daemon
-**Activate your ABAP Daemon class by pressing `Ctrl+F3`.**
-
-To run the ABAP Daemon, create a new ABAP Program **`Z_TUTORIAL_MQTT_DAEMON_START`** that contains the following line:
-
-```ABAP
-zcl_tutorial_mqtt_daemon=>start( iv_daemon_name = 'mqtt_daemon' iv_subscription_topic = 'abaptopic/tutorial/subscribe' iv_publish_topic = 'abaptopic/tutorial/publish' ).
-```
-
-**Activate your program** `Z_TUTORIAL_MQTT_DAEMON_START` **by pressing `Ctrl+F3`**. Afterwards, **run it as ABAP Application (Console) by pressing `F9`**.
-
-> Your daemon should now be running in the background. You can check this in the transaction `SMDAEMON`.
-<!--DONE-->
-
-#### Prepare interaction with the ABAP Daemon
-In this step, you will create two programs to test the functionality of your ABAP Daemon.
-
-Create an ABAP Program **`Z_TUTORIAL_MQTT_DAEMON_SEND`**, which should send a message to the ABAP Messaging Channel to trigger the forwarding mechanism from AMC to MQTT. Copy the implementation below into this new program:
-
-```ABAP
-" create a PCP message
-DATA(lo_pcp)     = cl_ac_message_type_pcp=>create( ).
-lo_pcp->set_text( 'This is a test message.' ).
-
-" send message via AMC
-CAST if_amc_message_producer_pcp(
-       cl_amc_channel_manager=>create_message_producer(
-         i_application_id = 'Z_AMC_TUTORIAL_CHANNEL'
-         i_channel_id     =  '/mqtt_forward'
-         i_suppress_echo  = abap_true )
-  )->send( i_message = lo_pcp ).
-```
-
-For the reverse direction, you will need a class that simply waits for any incoming messages via the AMC and logs them to the console. **Create a new ABAP class `ZCL_TUTORIAL_MQTT_DAEMON_RECV`** with the following content:
-
-```ABAP
-CLASS zcl_tutorial_mqtt_daemon_recv DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC.
-
-  PUBLIC SECTION.
-    INTERFACES: if_oo_adt_classrun, if_amc_message_receiver_pcp.
-  PROTECTED SECTION.
-  PRIVATE SECTION.
-    DATA: mo_out     TYPE REF TO if_oo_adt_classrun_out,
-          mv_message TYPE string.
-ENDCLASS.
-
-CLASS zcl_tutorial_mqtt_daemon_recv IMPLEMENTATION.
-  METHOD if_oo_adt_classrun~main.
-
-    " create new instance of this class for receiving AMC messages
-    DATA(lo_receiver) = NEW zcl_tutorial_mqtt_daemon_recv( ).
-    lo_receiver->mo_out = out.
-    lo_receiver->mv_message = ''.
-
-    " subscribe to the channel
-    TRY.
-        cl_amc_channel_manager=>create_message_consumer(
-              i_application_id = 'Z_AMC_TUTORIAL_CHANNEL'
-              i_channel_id     = '/mqtt_forward'
-          )->start_message_delivery( i_receiver = lo_receiver ).
-      CATCH cx_amc_error.
-        " to do: error handling, e.g. write error log!
-    ENDTRY.
-
-    " wait until an AMC message has been received
-    WAIT FOR MESSAGING CHANNELS UNTIL lo_receiver->mv_message IS NOT INITIAL UP TO 60 SECONDS.
-
-      " log any received message to the console
-    IF lo_receiver->mv_message IS NOT INITIAL.
-      out->write( |AMC message received: { lo_receiver->mv_message }| ).
-    ELSE.
-      out->write( 'No message received.' ).
-    ENDIF.
-
-  ENDMETHOD.
-
-  METHOD if_amc_message_receiver_pcp~receive.
-    TRY.
-        " retrieve the received AMC message text
-        mv_message = i_message->get_text( ).
-      CATCH cx_ac_message_type_pcp_error.
-        " to do: error handling, e.g. write error log!
-    ENDTRY.
-  ENDMETHOD.
-
-ENDCLASS.
-```
-
-As these two programs will need to access your ABAP Messaging Channel, make sure to **add them to the *Authorized Programs* section** of the AMC Application. **Activate the AMC Application** afterwards.
-
-![Add authorized programs to the ABAP Messaging Channel](add-authorized-programs.png)
-
-<!--DONE-->
-
-#### Interact with the ABAP Daemon
-
-Use the [HiveMQ Websocket Client](http://www.hivemq.com/demos/websocket-client/) to subscribe to the MQTT topic `abaptopic/tutorial/publish` as you can see in the image below:
-
-![Subscribe to a topic using the HiveMQ Websocket Client](websocket-client-subscribe.png)
-
-> The HiveMQ Websocket Client is only used for example purposes. For productive usage, you can switch to any other application and broker. Make sure to adjust your source code accordingly.
-
-**Activate the program** `Z_TUTORIAL_MQTT_DAEMON_SEND` **by pressing `Ctrl+F3`**. Afterwards, **run it as ABAP Application (Console) by pressing `F9`**.
-
-You should see the text you just published on your ABAP Messaging Channel appear in the HiveMQ Websocket Client interface. This proves that your daemon has forwarded the message via MQTT.
-
-![MQTT messages sent by the ABAP Daemon](websocket-client-message.png)
-
-For testing the other forwarding direction, **activate the class** `ZCL_TUTORIAL_MQTT_DAEMON_RECV`  **by pressing `Ctrl+F3`**. Now **run it as ABAP Application (Console) by pressing `F9`**.
-
-> The class will now be able to receive AMC messages for 60 seconds. You can extend this time range by modifying the `WAIT ... UP TO 60 SECONDS` statement in the source code or you simply execute your class again.
-
-While the class is running, you can publish MQTT messages under the topic `abaptopic/tutorial/subscribe` by using the [HiveMQ Websocket Client](http://www.hivemq.com/demos/websocket-client/):
-
-![Send a message using the HiveMQ Websocket Client](websocket-client-publish.png)
-
-This triggers the forwarding process and your ABAP class will output the received AMC message in the console:
-
-![The forwarded MQTT message was received via the AMC](console-received-message.png)
-
-[VALIDATE_1]
+Replace the full https parameter in the `azcopy` command above with your shared access signature (SAS) created in step 5.
