@@ -10,29 +10,27 @@ parser: v2
 
 # Title
 
-<!--description-->Description
+<!--description--> Description
 
 ## Prerequisites
-- You have installed the [Postman](https://www.postman.com/downloads/) app.
-- You have created a SAP Conversational AI chatbot, for example, as described in the tutorial [Build Your First Chatbot with SAP Conversational AI](mission.cai-get-started).
+- You have completed the [previous tutorial](hana-cloud-ase-migration-2) on how to encrypt your SAP ASE database to migrate from on-premise to SAP HANA Cloud.
 
-## Details
-### You will learn
-- How to retrieve an OAuth token for use with SAP Conversational AI API
-- How to call SAP Conversational AI API with an OAuth token
-- How to set up a Postman collection to call the APIs
+## You will learn
+- How to create an SAP HANA Cloud, SAP ASE database instance
+- How to copy the encrypted backup to MS Azure using **`azcopy`**
+- How to load the encrypted backup
 
-This tutorial is a companion to the tutorial [Call SAP Conversational AI API Using OAuth](conversational-ai-api-oauth), which was a more sophisticated setup for calling SAP Conversational AI APIs using a Python server. Here, you will use Postman to more simply show how to retrieve an OAuth token and then call the API.
+## Intro
 
-In Postman, you will set up 3 requests, and put them in a collection so they can be run together and pass arguments to each other:
+Migrating an SAP ASE database from on-premise to the cloud requires a bit of preparation and a few important steps. You can look at each of them in more detail, but these are the high-level steps required:
 
-- `start`: This request is a dummy request, but let's us at the start test whether we already have an OAuth token. If yes, we skip the request for getting a token.
+1.	Pre-requisites for migration
+2.	Pre-Migration - Encrypt the on-premise SAP ASE database
+3.	Migration - Create the SAP HANA Cloud, SAP ASE database
+4.	Migration - Copy the Encrypted Backup to MS Azure
+5.	Migration - Load the Encrypted Backup
 
-- `get-oauth-credentials`: This request takes our chatbot credentials and calls the OAuth service to retrieve a new OAuth token.
-
-- `request`: This request is the basic SAP Conversational AI Runtime API for sending an utterance to the NLP. (We could have also used the `dialog` Runtime API.)  
-
->This tutorial also shows off some of the functionality of Postman, from pre-request scripts, to tests, to setting and get environment data in order to pass between requests. It would have been simpler to use the built-in Postman OAuth authentication feature.
+This tutorial will cover the steps (3 to 5) involving the migration. You can learn about the [first](hana-cloud-ase-migration-1) and the [second](hana-cloud-ase-migration-2) step by referring to the previous tutorials.
 
 ### Create the SAP HANA Cloud, SAP ASE database instance
 
