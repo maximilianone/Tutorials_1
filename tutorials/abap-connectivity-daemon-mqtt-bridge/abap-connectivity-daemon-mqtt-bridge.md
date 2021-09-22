@@ -10,7 +10,7 @@ parser: v2
 
 # Title
 
-<!-- description -->Description
+<!--description-->Description
 
 ## Prerequisites
 - You have installed the [Postman](https://www.postman.com/downloads/) app.
