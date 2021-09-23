@@ -33,8 +33,6 @@ Migrating an SAP ASE database from on-premise to the cloud requires a bit of pre
 This tutorial will cover the steps (3 to 5) involving the migration. You can learn about the [first](hana-cloud-ase-migration-1) and the [second](hana-cloud-ase-migration-2) step by referring to the previous tutorials.
 
 ---
----
----
 
 ### Create the SAP HANA Cloud, SAP ASE database instance
 
