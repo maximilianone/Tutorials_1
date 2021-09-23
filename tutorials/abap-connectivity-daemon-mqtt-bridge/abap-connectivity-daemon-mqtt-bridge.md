@@ -10,7 +10,7 @@ parser: v2
 
 # Title
 
-<!--description--> Description
+<!-- description --> Description
 
 ## Prerequisites
 - You have completed the [previous tutorial](hana-cloud-ase-migration-2) on how to encrypt your SAP ASE database to migrate from on-premise to SAP HANA Cloud.
@@ -38,7 +38,7 @@ This tutorial will cover the steps (3 to 5) involving the migration. You can lea
 
 ### Create the SAP HANA Cloud, SAP ASE database instance
 
-<!--border-->[Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
+<!--border-->![Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
 
 Now it's time to make sure your SAP ASE database in SAP HANA Cloud is ready to receive the data from your on-premise SAP ASE database. To ensure this, follow these steps:
 
@@ -83,7 +83,7 @@ ddlgen -Usa -P<PASSWORD> -SASE16sp04GA -Dmaster -TEK -XOD -N %
 
 ### Step 2 - Copy the encrypted backup to MS Azure using azcopy
 
-[Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
+![Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
 
 You can see a migration demo video here, and then check out the detailed steps:
 
