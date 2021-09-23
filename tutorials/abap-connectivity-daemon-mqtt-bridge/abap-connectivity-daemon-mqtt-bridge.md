@@ -72,7 +72,7 @@ ddlgen -Usa -P<PASSWORD> -SASE16sp04GA -Dmaster -TEK -XOD -N %
 
 6.	Create the database using the migrated DEK.
 
-    > **CAUTION**
+    > ## CAUTION
     >
     > It is very important to create the database **with the encrypted key**. If you don't, the database will still be created but you won't be able to load the database later.
 
