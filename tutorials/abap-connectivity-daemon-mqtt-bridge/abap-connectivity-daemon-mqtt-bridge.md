@@ -36,7 +36,7 @@ This tutorial will cover the steps (3 to 5) involving the migration. You can lea
 ---
 ---
 
-### Create the SAP HANA Cloud, SAP ASE database instance
+## Create the SAP HANA Cloud, SAP ASE database instance
 
 <!--border-->[Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
 
@@ -72,7 +72,7 @@ ddlgen -Usa -P<PASSWORD> -SASE16sp04GA -Dmaster -TEK -XOD -N %
 
 6.	Create the database using the migrated DEK.
 
-    > #### CAUTION
+    > ### CAUTION
     >
     > It is very important to create the database **with the encrypted key**. If you don't, the database will still be created but you won't be able to load the database later.
 
@@ -81,7 +81,7 @@ ddlgen -Usa -P<PASSWORD> -SASE16sp04GA -Dmaster -TEK -XOD -N %
     ```
 
 
-### Step 2 - Copy the encrypted backup to MS Azure using azcopy
+## Step 2 - Copy the encrypted backup to MS Azure using azcopy
 
 [Add unimplemented methods in ABAP Development Tools](add-unimplemented-methods.png)
 
@@ -123,6 +123,4 @@ rpm --import https://urldefense.com/v3/__https://packages.microsoft.com/keys/mic
 Replace the full https parameter in the `azcopy` command above with your shared access signature (SAS) created in step 5.
 
 
----
----
 ---
