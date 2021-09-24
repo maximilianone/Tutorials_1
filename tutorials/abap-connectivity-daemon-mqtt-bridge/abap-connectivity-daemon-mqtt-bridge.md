@@ -6,7 +6,6 @@ primary_tag: products>sap-hana-cloud
 parser: v2
 ---
 
-# Title
 
 <!-- description -->     Description Test
 
