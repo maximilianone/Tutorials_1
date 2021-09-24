@@ -4,7 +4,7 @@ description:  Extend a business catalog with custom UI application.
 auto_validation: true
 primary_tag: software-product>sap-hana-cloud
 tags: [  tutorial>beginner, topic>abap-development, topic>abap-extensibility ]
-time: 10
+time: 15
 author_name: Ulrike Liebherr
 author_profile: https://github.com/Liebherr
 ---
