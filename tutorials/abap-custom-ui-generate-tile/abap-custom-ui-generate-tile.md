@@ -4,7 +4,7 @@ description:  Extend a business catalog with custom UI application.
 auto_validation: true
 primary_tag: topic>abap-development
 tags: [  tutorial>beginner, topic>abap-development, topic>abap-extensibility ]
-time: 12
+time: 10
 author_name: Ulrike Liebherr
 author_profile: https://github.com/Liebherr
 ---

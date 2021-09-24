@@ -4,7 +4,7 @@ description: Set up trust between SAP Cloud Platform Identity Authentication Ser
 auto_validation: true
 primary_tag: topic>abap-development
 tags: [  tutorial>beginner, topic>abap-development, topic>abap-extensibility ]
-time: 20
+time: 25
 author_name: Ulrike Liebherr
 author_profile: https://github.com/Liebherr
 ---
