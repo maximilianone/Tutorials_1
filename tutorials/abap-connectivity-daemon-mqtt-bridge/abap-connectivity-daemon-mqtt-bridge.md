@@ -1,4 +1,5 @@
 ---
+title: Migrate SAP ASE Database from On-Premise to SAP HANA Cloud
 auto_validation: true
 time: 10
 tags: [ tutorial>beginner, products>sap-hana-cloud, products>sap-adaptive-server-enterprise, software-product-function>sap-hana-cloud\,-sap-adaptive-server-enterprise]
@@ -7,7 +8,7 @@ parser: v2
 ---
 
 
-<!-- description -->     Description Test
+<!-- description --> Description
 
 ## Prerequisites
 - You have completed the [previous tutorial](hana-cloud-ase-migration-2) on how to encrypt your SAP ASE database to migrate from on-premise to SAP HANA Cloud.
