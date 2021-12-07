@@ -4,7 +4,7 @@ description: Publish and receive MQTT messages in ABAP using the ABAP MQTT Clien
 auto_validation: true
 primary_tag: topic>abap-development
 tags: [  tutorial>intermediate, topic>abap-development, topic>internet-of-things ]
-time: 33
+time: 33=4
 ---
 
 ## Prerequisites
