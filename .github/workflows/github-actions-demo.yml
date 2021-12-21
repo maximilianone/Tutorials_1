@@ -7,7 +7,7 @@ jobs:
   Explore-GitHub-Actions:
     runs-on: ubuntu-latest
     steps:
-      - name: Probot app name
+      - name: Set issue label
         uses: maximilianone/add-task-issue-labels@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
