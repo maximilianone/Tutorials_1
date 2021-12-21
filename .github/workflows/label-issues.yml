@@ -1,10 +1,10 @@
-name: Say Hello World
+name: Task Issue Labeler
 on:
   issues:
     types:
       - opened
 jobs:
-  Explore-GitHub-Actions:
+  Label-New-Issues:
     runs-on: ubuntu-latest
     steps:
       - name: Set issue label
