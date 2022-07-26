@@ -12,7 +12,7 @@ tags: [ tutorial>intermediate, topic>abap-development  ]
 
 ## Details
 ### You will learn
-- How to create and run an ABAP Daemon
+- How to create and run an ABAP Daemon Test
 - How to send PCP messages to an ABAP Daemon
 
 
